@@ -523,15 +523,49 @@ def get_branches(git_path, module, dest):
     return branches
 
 def get_status(git_path, module, dest):
-    branches = []
+    status_result = []
     cmd = '%s status' % (git_path,)
     (rc, out, err) = module.run_command(cmd, cwd=dest)
     if rc != 0:
         module.fail_json(msg="Could not retrieve status %s" % dest, stdout=out, stderr=err)
     for line in out.split('\n'):
         if line.strip():
-            branches.append(line.strip())
-    return branches
+            status_result.append(line.strip())
+    return status_result
+
+def add_file(git_path, module, dest, file_name):
+    add_result = []
+    cmd = '%s add %s' % (git_path,file_name)
+    (rc, out, err) = module.run_command(cmd, cwd=dest)
+    if rc != 0:
+        module.fail_json(msg="Could not retrieve status %s" % dest, stdout=out, stderr=err)
+    for line in out.split('\n'):
+        if line.strip():
+            add_result.append(line.strip())
+    return add_result
+
+def commit_files(git_path, module, dest, commit_msg):
+    commit_result = []
+    cmd = '%s commit -m %s' % (git_path,commit_msg)
+    (rc, out, err) = module.run_command(cmd, cwd=dest)
+    if rc != 0:
+        module.fail_json(msg="Could not retrieve status %s" % dest, stdout=out, stderr=err)
+    for line in out.split('\n'):
+        if line.strip():
+            commit_result.append(line.strip())
+    return commit_result
+
+def push_changes(git_path, module, dest, push_branch):
+    push_result = []
+    cmd = '%s push origin  %s' % (git_path,push_branch)
+
+    (rc, out, err) = module.run_command(cmd, cwd=dest)
+    if rc != 0:
+        module.fail_json(msg="Could not retrieve status %s" % dest, stdout=out, stderr=err)
+    for line in out.split('\n'):
+        if line.strip():
+            push_result.append(line.strip())
+    return push_result
 
 def get_tags(git_path, module, dest):
     tags = []
@@ -861,12 +895,6 @@ def has_more_than_one(status, addfile, commit, push):
     count = count + 1 if push else 0
     return True if count > 1 else False
 
-def is_valid_add_params():
-    return True
-
-def is_valid_commmit_params():
-    return True
-
 def is_valid_push_params():
     return True
 
@@ -898,6 +926,9 @@ def main():
             add=dict(default='no', type='bool'),
             commit=dict(default='no', type='bool'),
             push=dict(default='no', type='bool'),
+            file_name=dict(default=None),
+            commit_msg=dict(default=None),
+            push_branch=dict(default='master',required=False)
         ),
         supports_check_mode=True
     )
@@ -922,6 +953,10 @@ def main():
     addfile  = module.params['add']
     commit  = module.params['commit']
     push  = module.params['push']
+    file_name = module.params['file_name']
+    commit_msg = module.params['commit_msg']
+    push_branch = module.params['push_branch']
+
 
     result = dict( warnings=list() )
 
@@ -951,23 +986,22 @@ def main():
         if not dest:
             module.fail_json(msg="'dest' is required for custom options [status, add, commit, push]")
         if status:
-            #result['status'] = get_status(git_path, module, dest)
-            print '+++++++++++'
-            #print result['status']
-
-            result['status'] = 'done'
+            result['status'] = get_status(git_path, module, dest)
         if not repo:
             module.fail_json(msg="'repo' is required for custom options [add, commit, push]")
         else:
             if addfile:
-                if is_valid_add_params():
-                    print "add"
+                if not file_name:
+                    module.fail_json(msg="'file_name' is required for custom options [add]")
+                else:
+                    result['add'] = add_file(git_path, module, dest,file_name)
             if commit:
-                if is_valid_commmit_params():
-                    print "commit"
+                if not commit_msg:
+                    module.fail_json(msg="'commit_msg' is required for custom options [commit]")
+                else:
+                    result['commit'] = commit_files(git_path, module, dest, commit_msg)
             if push:
-                if is_valid_push_params():
-                    print "push"
+                result['push'] = push_changes(git_path, module, dest, push_branch)
         module.exit_json(**result)
 
 
