@@ -522,6 +522,17 @@ def get_branches(git_path, module, dest):
             branches.append(line.strip())
     return branches
 
+def get_status(git_path, module, dest):
+    branches = []
+    cmd = '%s status' % (git_path,)
+    (rc, out, err) = module.run_command(cmd, cwd=dest)
+    if rc != 0:
+        module.fail_json(msg="Could not retrieve status %s" % dest, stdout=out, stderr=err)
+    for line in out.split('\n'):
+        if line.strip():
+            branches.append(line.strip())
+    return branches
+
 def get_tags(git_path, module, dest):
     tags = []
     cmd = '%s tag' % (git_path,)
@@ -842,10 +853,10 @@ def git_version(git_path, module):
         return None
     return LooseVersion(rematch.groups()[0])
 
-def has_more_than_one(status, add, commit, push):
+def has_more_than_one(status, addfile, commit, push):
     count = 0
     count = count + 1 if status else 0
-    count = count + 1 if add else 0
+    count = count + 1 if addfile else 0
     count = count + 1 if commit else 0
     count = count + 1 if push else 0
     return True if count > 1 else False
@@ -883,6 +894,10 @@ def main():
             recursive=dict(default='yes', type='bool'),
             track_submodules=dict(default='no', type='bool'),
             umask=dict(default=None, type='raw'),
+            status=dict(default='no', type='bool'),
+            add=dict(default='no', type='bool'),
+            commit=dict(default='no', type='bool'),
+            push=dict(default='no', type='bool'),
         ),
         supports_check_mode=True
     )
@@ -904,7 +919,7 @@ def main():
     ssh_opts  = module.params['ssh_opts']
     umask  = module.params['umask']
     status  = module.params['status']
-    add  = module.params['add']
+    addfile  = module.params['add']
     commit  = module.params['commit']
     push  = module.params['push']
 
@@ -930,22 +945,30 @@ def main():
     # call run_command()
     module.run_command_environ_update = dict(LANG='C', LC_ALL='C', LC_MESSAGES='C', LC_CTYPE='C')
 
-    if status or add or commit or push:
-        if has_more_than_one(status, add, commit, push):
+    if status or addfile or commit or push:
+        if has_more_than_one(status, addfile, commit, push):
             module.fail_json(msg="More than one custom option is not allowed [status, add, commit, push]")
         if not dest:
-            module.fail_json(msg="'dest' is required for custom option [status, add, commit, push]")
+            module.fail_json(msg="'dest' is required for custom options [status, add, commit, push]")
         if status:
-            # code to return status
-        if add:
-            if is_valid_add_params:
-                # code to add files
-        if commit:
-            if is_valid_commmit_params():
-                # code to commit
-        if push:
-            if is_valid_push_params():
-                #code to push
+            #result['status'] = get_status(git_path, module, dest)
+            print '+++++++++++'
+            #print result['status']
+
+            result['status'] = 'done'
+        if not repo:
+            module.fail_json(msg="'repo' is required for custom options [add, commit, push]")
+        else:
+            if addfile:
+                if is_valid_add_params():
+                    print "add"
+            if commit:
+                if is_valid_commmit_params():
+                    print "commit"
+            if push:
+                if is_valid_push_params():
+                    print "push"
+        module.exit_json(**result)
 
 
     gitconfig = None
