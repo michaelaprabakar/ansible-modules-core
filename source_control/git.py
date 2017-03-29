@@ -842,6 +842,22 @@ def git_version(git_path, module):
         return None
     return LooseVersion(rematch.groups()[0])
 
+def has_more_than_one(status, add, commit, push):
+    count = 0
+    count = count + 1 if status else 0
+    count = count + 1 if add else 0
+    count = count + 1 if commit else 0
+    count = count + 1 if push else 0
+    return True if count > 1 else False
+
+def is_valid_add_params():
+    return True
+
+def is_valid_commmit_params():
+    return True
+
+def is_valid_push_params():
+    return True
 
 # ===========================================
 
@@ -887,6 +903,10 @@ def main():
     key_file  = module.params['key_file']
     ssh_opts  = module.params['ssh_opts']
     umask  = module.params['umask']
+    status  = module.params['status']
+    add  = module.params['add']
+    commit  = module.params['commit']
+    push  = module.params['push']
 
     result = dict( warnings=list() )
 
@@ -909,6 +929,24 @@ def main():
     # We screenscrape a huge amount of git commands so use C locale anytime we
     # call run_command()
     module.run_command_environ_update = dict(LANG='C', LC_ALL='C', LC_MESSAGES='C', LC_CTYPE='C')
+
+    if status or add or commit or push:
+        if has_more_than_one(status, add, commit, push):
+            module.fail_json(msg="More than one custom option is not allowed [status, add, commit, push]")
+        if not dest:
+            module.fail_json(msg="'dest' is required for custom option [status, add, commit, push]")
+        if status:
+            # code to return status
+        if add:
+            if is_valid_add_params:
+                # code to add files
+        if commit:
+            if is_valid_commmit_params():
+                # code to commit
+        if push:
+            if is_valid_push_params():
+                #code to push
+
 
     gitconfig = None
     if not dest and allow_clone:
